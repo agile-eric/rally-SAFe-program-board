@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Program Board</title>
+  <style>
+:root {
+  --rally-primary-text: #434A54;
+  --rally-label: #58606e;
+  --pb-line: #9a9a9a;
+  --pb-gray: #f1f1f1;
+  --pb-blue: #99cdff;
+  --pb-blue-border: #0070c0;
+  --pb-red: #ec5945;
+  --pb-red-border: #c00000;
+  --pb-orange: #fba65c;
+  --pb-orange-border: #e05e0d;
+}
+
+* { box-sizing: border-box; }
+
+body, #wrapper {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: var(--rally-primary-text);
+  font-size: 14px;
+  margin: 0;
+}
+#wrapper { padding: 8px; }
+
+a, a:link, a:visited, a:hover { color: #3272d9; }
+
+.rally-alert { padding: 10px 14px; border-radius: 3px; margin: 8px 0; }
+.rally-alert-info { background: #e8f1fb; border: 1px solid #b7d1f0; }
+.rally-alert-error { background: #fdecea; border: 1px solid #f1b3ad; }
+
+.pb-title { font-size: 20px; font-weight: bold; margin: 0; }
+.pb-meta { color: var(--rally-label); margin: 2px 0 8px; font-size: 12px; }
+.pb-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.pb-button {
+  height: 28px; padding: 3px 12px; border: 1px solid #1d5bbf; border-radius: 3px;
+  background: #fff; color: #1d5bbf; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.pb-button:hover { background: #f0f5fc; }
+
+.pb-legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 6px 0 10px; font-size: 12px; }
+.pb-legend .pb-card { margin: 0; min-width: 120px; }
+
+#pb-scroll { position: relative; overflow: auto; border: 3px solid #343333; max-height: 80vh; }
+#pb-grid { display: grid; position: relative; }
+.pb-h {
+  background: var(--pb-gray); font-weight: bold; font-size: 14px; padding: 8px;
+  border-left: 1px solid var(--pb-line); border-bottom: 3px solid #343333;
+  position: sticky; top: 0; z-index: 3;
+}
+.pb-h small { display: block; font-weight: normal; font-size: 11px; color: var(--rally-label); }
+.pb-h.pb-corner { border-left: 0; left: 0; z-index: 5; }
+.pb-h.pb-uns, .pb-cell.pb-uns { border-left: 3px solid #343333; }
+.pb-rl {
+  background: var(--pb-gray); font-weight: bold; padding: 8px; border-bottom: 1px solid var(--pb-line);
+  position: sticky; left: 0; z-index: 2;
+}
+.pb-rl small { display: block; font-weight: normal; color: var(--rally-label); font-size: 11px; }
+.pb-rl.pb-empty, .pb-cell.pb-empty { opacity: .55; }
+.pb-cell {
+  border-left: 1px solid var(--pb-line); border-bottom: 1px solid var(--pb-line);
+  padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 40px;
+}
+.pb-cell.pb-uns { background: repeating-linear-gradient(135deg, #fff, #fff 10px, #fafafa 10px, #fafafa 20px); }
+.pb-cell.pb-msrow, .pb-rl.pb-msrow { border-bottom: 3px solid #343333; }
+.pb-nomilestones { grid-column: span 2; color: var(--rally-label); font-style: italic; padding: 8px; border-bottom: 3px solid #343333; border-left: 1px solid var(--pb-line); }
+
+.pb-card {
+  background: var(--pb-blue); border: 2px solid var(--pb-blue-border); border-radius: 3px 3px 10px 3px;
+  padding: 4px 7px; font-size: 12px; position: relative;
+}
+.pb-card b { font-size: 13px; }
+.pb-card .pb-st { float: right; font-size: 10px; color: #234; }
+.pb-card .pb-sub { font-size: 11px; color: #123; }
+.pb-card.pb-dep { background: var(--pb-red); border-color: var(--pb-red-border); color: #fff; }
+.pb-card.pb-dep .pb-st, .pb-card.pb-dep .pb-sub, .pb-card.pb-dep a { color: #fff; }
+.pb-card.pb-partial { border-style: dashed; }
+.pb-card.pb-nostory { opacity: .75; }
+.pb-card.pb-ms { background: var(--pb-orange); border-color: var(--pb-orange-border); color: #fff; }
+.pb-card.pb-ms a, .pb-card.pb-ms .pb-sub { color: #fff; }
+.pb-chip {
+  display: inline-block; background: var(--pb-red); border: 1px solid var(--pb-red-border); color: #fff;
+  font-size: 10px; font-weight: bold; border-radius: 8px; padding: 0 5px; margin: 2px 3px 0 0;
+}
+.pb-chip a, .pb-chip a:link, .pb-chip a:visited { color: #fff; }
+
+#pb-strings { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 4; }
+
+.pb-notes { max-width: 1100px; line-height: 1.5; margin-top: 12px; }
+.pb-notes table { border-collapse: collapse; margin: 6px 0; }
+.pb-notes td, .pb-notes th { border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-size: 12px; }
+
+.pb-settings label { display: block; margin: 10px 0 2px; font-size: 12px; color: var(--rally-label); }
+.pb-settings input[type=text], .pb-settings select { padding: 5px 8px; min-width: 260px; font-size: 13px; }
+
+@media print {
+  .pb-toolbar, .pb-settings { display: none; }
+  #pb-scroll { max-height: none; overflow: visible; }
+}
+  </style>
+</head>
+
+<body>
+  <div id="wrapper"></div>
+
+  <script>
+    // $RallyContext:Begin
+    // $RallyContext:End
+  </script>
+
+  <script>
+// ─── Utility functions (copied from rally-widgets/examples; `export` removed; applyFormattedIDTemplate modified, see below) ──
+const MAX_PAGE_SIZE = 2000;
+
+const getPortfolioItemTypeDefinitions = () => {
+    if (!$RallyContext || !$RallyContext.Schema) {
+        return null;
+    }
+    var portfolioItemTypes = $RallyContext && $RallyContext.Schema && $RallyContext.Schema.reduce((types,t) => {
+            if (t.TypePath.includes('PortfolioItem/')){
+                types.push(t);
+            }
+            return types;
+        },[]) || null;
+    return portfolioItemTypes;
+}
+
+const getLowestLevelPortfolioItemType = () =>{
+    return getPortfolioItemTypeDefinitions()?.find((type)=> type.Ordinal === 0)?.TypePath;
+}
+
+const loadWsapiData = (type,params,returnRawResults = false) => {
+    var url = `${$RallyContext.Url.origin}/slm/webservice/v2.0/${type}`;
+    var paramDelimiter = "?";
+    for (const p in params) {
+        url = `${url}${paramDelimiter}${p}=${params[p]}`;
+        paramDelimiter = "&";
+    }
+    return fetch(url)
+        .then(response => response.json())
+        .then(results => {
+            if (returnRawResults){
+                return Promise.resolve(results);
+            } else if (!results || !results.QueryResult || !results.QueryResult.Results || (results.QueryResult.Errors && results.QueryResult.Errors.length > 0)){
+                var errorMsg = results; //prob need to do something better here
+                if (results && results.QueryResult  && results.QueryResult.Errors){
+                    errorMsg = results.QueryResult.Errors.join(", ");
+                }
+                Promise.reject(`Error loading WSAPI data from ${url}:  ${errorMsg}`)
+            } else {
+                return Promise.resolve(results.QueryResult.Results);
+            }
+        });
+}
+
+async function loadWsapiDataMultiplePages(type, params, allData = []) {
+  try {
+    const data = await loadWsapiData(type, params, true);
+    const { PageSize, StartIndex, TotalResultCount } = data.QueryResult;
+    const nextStartIndex = StartIndex + PageSize;
+
+    allData = allData.concat(data.QueryResult.Results);
+
+    if ((StartIndex + PageSize) < TotalResultCount) {
+        params.start=nextStartIndex;
+        return loadWsapiDataMultiplePages(type,params,allData);
+    } else {
+      return allData;
+    }
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    throw error;
+  }
+}
+
+const constructQuery = (queryClauses, operator = 'AND') => {
+    queryClauses = queryClauses || [];
+
+    return queryClauses.reduce((query, clause) => {
+        if (!clause){
+            return query;
+        }
+        if (query){
+            query = `(${query} ${operator} ${clause})`;
+        } else {
+            query = clause;
+        }
+        return query;
+    },'');
+}
+
+function getRelativeRef(ref) {
+    if (!ref || typeof ref !== 'string') {
+        return null;
+    }
+    const apiPrefix = '/slm/webservice/v2.0';
+    let pathname;
+
+    if (ref.toLowerCase().startsWith('http')) {
+        try {
+            pathname = new URL(ref).pathname;
+        } catch (e) {
+            console.error("Could not parse full _ref URL:", ref, e);
+            return null;
+        }
+    } else {
+        pathname = ref.split('?')[0];
+    }
+
+    // If the path starts with the API prefix, strip it off to get the relative artifact path.
+    return pathname.startsWith(apiPrefix) ? pathname.substring(apiPrefix.length) : pathname;
+}
+
+function getObjectIDFromRef(ref) {
+    if (!ref || typeof ref !== 'string') {
+        return null;
+    }
+    const parts = ref.split('/');
+    const lastPart = parts[parts.length - 1];
+    const objectID = lastPart.split('?')[0];
+    return /^\d+$/.test(objectID) ? objectID : null;
+}
+
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+// Modified from examples/ui-utilities.js: links open in a new tab (target="_blank", as in the endorsed
+// widgets). The example's target="_top" navigation is blocked inside the widget's iframe.
+function applyFormattedIDTemplate (record) {
+    const relativeRef = getRelativeRef(record._ref);
+    if (!relativeRef) {
+        return escapeHtml(record.FormattedID); // Fallback for safety
+    }
+    // Page URL without any query string in its hash, so "?detail=" is not appended to an existing query.
+    const href = String($RallyContext.Url.href);
+    const hashIndex = href.indexOf('#');
+    const base = hashIndex < 0
+        ? href.split('?')[0]
+        : href.slice(0, hashIndex) + href.slice(hashIndex).split('?')[0];
+    const detailUrl = `${base}?detail=${relativeRef}`;
+    return `<a href="${detailUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(record.FormattedID)}</a>`;
+}
+
+// ─── Default Settings ─────────────────────────────────────────────────────────
+const defaultSettings = {
+  ipMode: 'last',                 // 'last' = last iteration is the IP iteration; 'none' = no IP iteration
+  showEmptyTeams: true,           // show team rows that have no Features
+  doneFeatureStates: 'Done',      // comma-separated Feature State names that count as done
+  doneStoryStates: 'Accepted'     // comma-separated story ScheduleState values that count as done
+};
+
+function cleanseSettings(settings) {
+  const s = { ...defaultSettings, ...(settings || {}) };
+  if (s.ipMode !== 'last' && s.ipMode !== 'none') s.ipMode = defaultSettings.ipMode;
+  s.showEmptyTeams = s.showEmptyTeams === true || s.showEmptyTeams === 'true';
+  ['doneFeatureStates', 'doneStoryStates'].forEach((k) => {
+    if (typeof s[k] !== 'string' || !s[k].trim()) s[k] = defaultSettings[k];
+  });
+  return s;
+}
+
+let currentSettings = { ...defaultSettings };
+
+// ─── Main Entry ───────────────────────────────────────────────────────────────
+window.addEventListener('message', (event) => {
+  if (event.origin !== $RallyContext.Url.origin) return;
+
+  if (event.data && event.data.type === 'RALLY_CONTEXT_LOADED') {
+    currentSettings = cleanseSettings($RallyContext.Settings);
+    if ($RallyContext.isEditMode) {
+      // updateSettings is only available in Edit Mode
+      window.RallyContext.updateSettings(currentSettings);
+    }
+    buildWidget();
+  }
+});
+
+async function buildWidget() {
+  const wrapper = document.getElementById('wrapper');
+  if ($RallyContext.isEditMode) {
+    renderSettingsUI(currentSettings);
+    return;
+  }
+
+  const viewFilter = $RallyContext.ViewFilter || {};
+  if (viewFilter.Type !== 'Release' || !viewFilter.Value || !viewFilter.Value.Name) {
+    wrapper.innerHTML = '<div class="rally-alert rally-alert-info">This Program Board needs a <b>Release</b> view filter. ' +
+      'Add the widget to a custom view that is scoped by Release, then choose the PI Release.</div>';
+    return;
+  }
+
+  wrapper.innerHTML = '<div class="rally-alert rally-alert-info" id="pb-status">Loading Program Board…</div>';
+  try {
+    const raw = await loadBoardData(viewFilter.Value.Name, currentSettings, (msg) => {
+      const el = document.getElementById('pb-status');
+      if (el) el.textContent = msg;
+    });
+    const model = buildModel(raw, currentSettings);
+    renderBoard(model, currentSettings);
+  } catch (error) {
+    console.error('[ProgramBoard] Error building board:', error);
+    wrapper.innerHTML = `<div class="rally-alert rally-alert-error">Failed to build the Program Board: ${escapeHtml(error && error.message || error)}</div>`;
+  }
+}
+
+// ─── Data Loading ─────────────────────────────────────────────────────────────
+const enc = encodeURIComponent;
+const q = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+const oidOf = (obj) => (obj && obj._ref) ? getObjectIDFromRef(obj._ref) : null;
+
+function scopeParams() {
+  const g = $RallyContext.GlobalScope;
+  return {
+    workspace: g.Workspace._ref,
+    project: g.Project._ref,
+    projectScopeUp: g.ProjectScopeUp,
+    projectScopeDown: g.ProjectScopeDown
+  };
+}
+function workspaceParams() {
+  return { workspace: $RallyContext.GlobalScope.Workspace._ref };
+}
+
+// A collection fetched with `collectionsize` comes back with its items inline;
+// if not (or if it was truncated), follow the collection's own _ref.
+async function hydrateCollection(coll, fetchFields) {
+  if (!coll || !coll.Count) return [];
+  const inline = coll.Results || coll._tagsNameArray;
+  if (Array.isArray(inline) && inline.length >= coll.Count) return inline;
+  if (!coll._ref) return Array.isArray(inline) ? inline : [];
+  const base = coll._ref.toLowerCase().startsWith('http') ? coll._ref : `${$RallyContext.Url.origin}/slm/webservice/v2.0${coll._ref}`;
+  const url = `${base}?fetch=${fetchFields}&pagesize=200&workspace=${$RallyContext.GlobalScope.Workspace._ref}`;
+  const json = await fetch(url).then((r) => r.json());
+  return (json.QueryResult && json.QueryResult.Results) || [];
+}
+
+async function inChunks(items, size, worker) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(...await Promise.all(items.slice(i, i + size).map(worker)));
+  }
+  return out;
+}
+
+async function loadByObjectIDs(type, oids, fetchFields) {
+  const unique = [...new Set(oids)];
+  const chunks = [];
+  for (let i = 0; i < unique.length; i += 40) chunks.push(unique.slice(i, i + 40));
+  const results = await inChunks(chunks, 4, (chunk) => loadWsapiData(type, {
+    ...workspaceParams(),
+    query: enc(constructQuery(chunk.map((id) => `(ObjectID = ${id})`), 'OR')),
+    fetch: fetchFields,
+    pagesize: MAX_PAGE_SIZE
+  }));
+  return results.flatMap((r) => r || []);
+}
+
+async function loadBoardData(releaseName, settings, progress) {
+  const featureType = getLowestLevelPortfolioItemType(); // e.g. PortfolioItem/Feature
+  if (!featureType) throw new Error('Could not determine the lowest-level portfolio item type from the workspace schema.');
+  const featurePath = featureType.toLowerCase();
+  const rn = q(releaseName);
+
+  progress('Loading Release and iterations…');
+  const releases = (await loadWsapiData('release', {
+    ...scopeParams(), query: enc(`(Name = "${rn}")`), fetch: 'Name,ReleaseStartDate,ReleaseDate', pagesize: 200
+  })) || [];
+  const vfv = $RallyContext.ViewFilter.Value || {};
+  const starts = releases.map((r) => r.ReleaseStartDate).concat(vfv.ReleaseStartDate || []).filter(Boolean);
+  const ends = releases.map((r) => r.ReleaseDate).concat(vfv.ReleaseDate || []).filter(Boolean);
+  if (!starts.length || !ends.length) throw new Error(`Could not find start and end dates for Release "${releaseName}".`);
+  const relStart = new Date(Math.min(...starts.map((d) => new Date(d).getTime()))).toISOString();
+  const relEnd = new Date(Math.max(...ends.map((d) => new Date(d).getTime()))).toISOString();
+
+  const iterations = (await loadWsapiDataMultiplePages('iteration', {
+    ...scopeParams(),
+    query: enc(constructQuery([`(EndDate >= "${relStart}")`, `(StartDate <= "${relEnd}")`], 'AND')),
+    fetch: 'Name,StartDate,EndDate',
+    order: 'StartDate',
+    pagesize: MAX_PAGE_SIZE
+  })) || [];
+
+  progress('Loading Features…');
+  const features = (await loadWsapiDataMultiplePages(featurePath, {
+    ...scopeParams(),
+    query: enc(`(Release.Name = "${rn}")`),
+    fetch: 'FormattedID,Name,State,Project,Predecessors',
+    collectionsize: 100,
+    pagesize: MAX_PAGE_SIZE
+  })) || [];
+
+  progress('Loading user stories…');
+  const stories = (await loadWsapiDataMultiplePages('hierarchicalrequirement', {
+    ...scopeParams(),
+    query: enc(`(Feature.Release.Name = "${rn}")`),
+    fetch: 'FormattedID,Feature,Iteration,ScheduleState,Project,Predecessors',
+    collectionsize: 100,
+    pagesize: MAX_PAGE_SIZE
+  })) || [];
+
+  progress('Loading dependencies…');
+  // Feature → Feature predecessors
+  const featurePreds = [];
+  await inChunks(features.filter((f) => f.Predecessors && f.Predecessors.Count > 0), 6, async (f) => {
+    const preds = await hydrateCollection(f.Predecessors, 'FormattedID,Name');
+    preds.forEach((p) => featurePreds.push({ succOid: oidOf(f), predOid: oidOf(p) }));
+  });
+  // Story → Story predecessors
+  const storyPreds = [];
+  await inChunks(stories.filter((s) => s.Predecessors && s.Predecessors.Count > 0), 6, async (s) => {
+    const preds = await hydrateCollection(s.Predecessors, 'FormattedID');
+    preds.forEach((p) => storyPreds.push({ succStory: s, predOid: oidOf(p) }));
+  });
+
+  const predStories = await loadByObjectIDs('hierarchicalrequirement',
+    storyPreds.map((e) => e.predOid).filter(Boolean),
+    'FormattedID,Name,Feature,Iteration,ScheduleState');
+
+  const knownFeatureOids = new Set(features.map(oidOf));
+  const wantedFeatureOids = [
+    ...featurePreds.map((e) => e.predOid),
+    ...predStories.map((s) => oidOf(s.Feature))
+  ].filter((id) => id && !knownFeatureOids.has(id));
+  const externalFeatures = await loadByObjectIDs(featurePath, wantedFeatureOids, 'FormattedID,Name,State,Release,Project');
+
+  progress('Loading teams and milestones…');
+  // Project queries do not reliably honor the scope flags, so load the workspace's projects
+  // with their Parent and work out the current project's subtree in buildModel().
+  const projects = (await loadWsapiDataMultiplePages('project', {
+    workspace: $RallyContext.GlobalScope.Workspace._ref,
+    fetch: 'Name,State,Parent',
+    pagesize: MAX_PAGE_SIZE
+  })) || [];
+
+  const milestones = (await loadWsapiDataMultiplePages('milestone', {
+    ...workspaceParams(),
+    query: enc(constructQuery([`(TargetDate >= "${relStart}")`, `(TargetDate <= "${relEnd}")`], 'AND')),
+    fetch: 'FormattedID,Name,TargetDate',
+    pagesize: MAX_PAGE_SIZE
+  })) || [];
+
+  return {
+    releaseName, relStart, relEnd, iterations, features, stories,
+    featurePreds, storyPreds, predStories, externalFeatures, projects, milestones,
+    currentProject: $RallyContext.GlobalScope.Project,
+    scopeDown: $RallyContext.GlobalScope.ProjectScopeDown !== false
+  };
+}
+
+// ─── Model (pure logic; no DOM access) ────────────────────────────────────────
+const splitList = (s) => String(s).split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+const stateName = (st) => (st && typeof st === 'object') ? (st.Name || st._refObjectName || '') : (st || '');
+
+function buildModel(raw, settings) {
+  const DAY = 86400000;
+  const relStart = new Date(raw.relStart).getTime();
+  const relEnd = new Date(raw.relEnd).getTime();
+  const doneFeature = new Set(splitList(settings.doneFeatureStates));
+  const doneStory = new Set(splitList(settings.doneStoryStates));
+
+  // Columns: iterations inside the Release window, de-duplicated across projects by start date.
+  const colByKey = new Map();
+  const colByIterOid = new Map();
+  raw.iterations
+    .filter((it) => new Date(it.StartDate).getTime() >= relStart - DAY && new Date(it.EndDate).getTime() <= relEnd + DAY)
+    .sort((a, b) => new Date(a.StartDate) - new Date(b.StartDate))
+    .forEach((it) => {
+      const key = new Date(it.StartDate).toISOString().slice(0, 10);
+      if (!colByKey.has(key)) {
+        colByKey.set(key, { key, name: it.Name, start: new Date(it.StartDate).getTime(), end: new Date(it.EndDate).getTime(), index: colByKey.size + 1 });
+      }
+      colByIterOid.set(oidOf(it), colByKey.get(key));
+    });
+  const columns = [...colByKey.values()];
+  if (settings.ipMode === 'last' && columns.length) columns[columns.length - 1].isIP = true;
+
+  // Stories per Feature
+  const stats = new Map(); // featureOid -> {total, scheduled, lastCol}
+  raw.stories.forEach((s) => {
+    const foid = oidOf(s.Feature);
+    if (!foid) return;
+    if (!stats.has(foid)) stats.set(foid, { total: 0, scheduled: 0, lastCol: 0 });
+    const st = stats.get(foid);
+    st.total++;
+    const col = s.Iteration ? colByIterOid.get(oidOf(s.Iteration)) : null;
+    if (col) {
+      st.scheduled++;
+      st.lastCol = Math.max(st.lastCol, col.index);
+    } else if (s.Iteration) {
+      st.scheduled++; // scheduled, but in an iteration outside this Release window
+    }
+  });
+
+  // Cards
+  const cards = new Map(); // oid -> card
+  raw.features.forEach((f) => {
+    const oid = oidOf(f);
+    const st = stats.get(oid) || { total: 0, scheduled: 0, lastCol: 0 };
+    cards.set(oid, {
+      oid, record: f, id: f.FormattedID, name: f.Name, state: stateName(f.State),
+      projectOid: oidOf(f.Project), projectName: (f.Project && f.Project._refObjectName) || 'Unknown project',
+      total: st.total, scheduled: st.scheduled, col: st.lastCol, // 0 = not yet scheduled
+      isDone: doneFeature.has(stateName(f.State).toLowerCase()),
+      chips: [], isSource: false
+    });
+  });
+
+  // Details of features that are not on the board (predecessors outside this Release)
+  const extFeatures = new Map(raw.externalFeatures.map((f) => [oidOf(f), f]));
+  const featureInfo = (oid) => cards.get(oid) || (extFeatures.get(oid) && {
+    oid, record: extFeatures.get(oid), id: extFeatures.get(oid).FormattedID,
+    state: stateName(extFeatures.get(oid).State),
+    isDone: doneFeature.has(stateName(extFeatures.get(oid).State).toLowerCase()), offBoard: true
+  });
+
+  // Dependency edges: only OPEN predecessors (not done, or not yet scheduled), arrow → successor.
+  const edges = new Map(); // "pred>succ" -> {from, to, reasons[]}
+  const addEdge = (predOid, succOid, reason) => {
+    if (!predOid || !succOid || predOid === succOid || !cards.has(succOid)) return;
+    const k = `${predOid}>${succOid}`;
+    if (!edges.has(k)) edges.set(k, { from: predOid, to: succOid, reasons: [] });
+    edges.get(k).reasons.push(reason);
+  };
+
+  raw.featurePreds.forEach((e) => {
+    const p = featureInfo(e.predOid);
+    if (!p) return;
+    const notDone = !p.isDone;
+    const notScheduled = !p.offBoard && p.col === 0;
+    if (notDone) {
+      addEdge(e.predOid, e.succOid,
+        `Feature ${p.id} is ${p.state || 'not Done'}${notScheduled ? ' and has no scheduled stories' : ''}`);
+    }
+  });
+
+  const predStoryByOid = new Map(raw.predStories.map((s) => [oidOf(s), s]));
+  raw.storyPreds.forEach((e) => {
+    const ps = predStoryByOid.get(e.predOid);
+    if (!ps || !ps.Feature) return;
+    const predFeatureOid = oidOf(ps.Feature);
+    const succFeatureOid = oidOf(e.succStory.Feature);
+    if (!predFeatureOid || predFeatureOid === succFeatureOid) return; // same Feature: not a Feature-to-Feature dependency
+    const isDone = doneStory.has(String(ps.ScheduleState || '').toLowerCase());
+    if (!isDone) {
+      addEdge(predFeatureOid, succFeatureOid,
+        `Story ${ps.FormattedID} (${ps.ScheduleState || 'no state'}${ps.Iteration ? '' : ', unscheduled'}) → ${e.succStory.FormattedID}`);
+    }
+  });
+
+  // Turn edges into strings (predecessor on board) or chips (predecessor not on board)
+  const strings = [];
+  edges.forEach((edge) => {
+    const toCard = cards.get(edge.to);
+    if (cards.has(edge.from)) {
+      cards.get(edge.from).isSource = true;
+      toCard.isTarget = true;
+      strings.push(edge);
+    } else {
+      const info = featureInfo(edge.from) || { id: `#${edge.from}`, record: null };
+      toCard.chips.push({ id: info.id, record: info.record, reasons: edge.reasons });
+    }
+  });
+
+  // Rows: current project first, then descendants. A Feature owned by a project outside the
+  // page's project scope tree is shown only when it is needed to show an open dependency
+  // (it is the end of a string, or carries a dependency chip).
+  const curOid = oidOf(raw.currentProject);
+  // Projects in scope: the current project, plus its descendants when "scope down" is on.
+  const childrenOf = new Map();
+  raw.projects.forEach((p) => {
+    const parentOid = oidOf(p.Parent);
+    if (!parentOid) return;
+    if (!childrenOf.has(parentOid)) childrenOf.set(parentOid, []);
+    childrenOf.get(parentOid).push(p);
+  });
+  const scopeOids = new Set([curOid]);
+  const scopedProjects = [];
+  if (raw.scopeDown) {
+    const queue = [curOid];
+    while (queue.length) {
+      (childrenOf.get(queue.shift()) || []).forEach((p) => {
+        const oid = oidOf(p);
+        if (scopeOids.has(oid)) return;
+        scopeOids.add(oid);
+        scopedProjects.push(p);
+        queue.push(oid);
+      });
+    }
+  }
+  const visibleCards = [...cards.values()].filter((c) => scopeOids.has(c.projectOid) || c.isSource || c.isTarget || c.chips.length > 0);
+  const hiddenOutOfScope = cards.size - visibleCards.length;
+  const rowDefs = [];
+  const seen = new Set();
+  const addRow = (oid, name, label) => { if (!seen.has(oid)) { seen.add(oid); rowDefs.push({ oid, name, label: label || name }); } };
+  addRow(curOid, raw.currentProject.Name, `${raw.currentProject.Name} – ART-level Features`);
+  scopedProjects
+    .filter((p) => p.State !== 'Closed')
+    .sort((a, b) => a.Name.localeCompare(b.Name))
+    .forEach((p) => addRow(oidOf(p), p.Name));
+  visibleCards.forEach((c) => { if (c.projectOid && !seen.has(c.projectOid)) addRow(c.projectOid, c.projectName, `${c.projectName} (outside project scope; shown for a dependency)`); });
+
+  const rows = rowDefs.map((r) => ({
+    ...r,
+    cardsByCol: (() => {
+      const m = new Map();
+      visibleCards.filter((c) => c.projectOid === r.oid).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+        .forEach((c) => { if (!m.has(c.col)) m.set(c.col, []); m.get(c.col).push(c); });
+      return m;
+    })(),
+    count: visibleCards.filter((c) => c.projectOid === r.oid).length
+  }));
+
+  // Milestones by column
+  const milestonesByCol = new Map();
+  raw.milestones.forEach((m) => {
+    const t = new Date(m.TargetDate).getTime();
+    const col = columns.find((c) => t >= c.start && t <= c.end + 1000);
+    if (!col) return;
+    if (!milestonesByCol.has(col.index)) milestonesByCol.set(col.index, []);
+    milestonesByCol.get(col.index).push(m);
+  });
+
+  const all = visibleCards;
+  return {
+    releaseName: raw.releaseName, relStart, relEnd, columns, rows, strings, milestonesByCol,
+    milestoneCount: raw.milestones.length,
+    hiddenOutOfScope,
+    counts: {
+      features: all.length,
+      unscheduled: all.filter((c) => c.col === 0).length,
+      noStories: all.filter((c) => c.total === 0).length,
+      partial: all.filter((c) => c.col > 0 && c.scheduled < c.total).length,
+      stringCount: strings.length,
+      chipCount: all.reduce((n, c) => n + c.chips.length, 0)
+    },
+    chipCards: all.filter((c) => c.chips.length)
+  };
+}
+
+// ─── Rendering ────────────────────────────────────────────────────────────────
+const fmtDate = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+function renderCard(c) {
+  let cls = 'pb-card';
+  if (c.isSource) cls += ' pb-dep';
+  if (c.total === 0) cls += ' pb-nostory';
+  else if (c.scheduled < c.total) cls += ' pb-partial';
+  const sub = c.total === 0 ? 'no stories' : `${c.scheduled}/${c.total} stories scheduled`;
+  const chips = c.chips.map((ch) => {
+    const link = ch.record ? applyFormattedIDTemplate(ch.record) : escapeHtml(ch.id);
+    return `<span class="pb-chip" title="${escapeHtml(ch.reasons.join('; '))}">⛓ ${link}</span>`;
+  }).join('');
+  return `<div class="${cls}" id="pb-c-${c.oid}" title="${escapeHtml(c.name + ' — ' + (c.state || 'no state'))}">` +
+    `<b>${applyFormattedIDTemplate(c.record)}</b><span class="pb-st">${escapeHtml(c.state || '—')}</span>` +
+    `<div class="pb-sub">${sub}</div>${chips}</div>`;
+}
+
+function renderBoard(model, settings) {
+  const wrapper = document.getElementById('wrapper');
+  const nCols = model.columns.length;
+  const template = `170px repeat(${nCols}, minmax(190px, 1fr)) minmax(190px, 1fr)`;
+
+  let html = '<div class="pb-grid-holder">';
+  html += `<h2 class="pb-title">Program Board — ${escapeHtml($RallyContext.GlobalScope.Project.Name)} — ${escapeHtml(model.releaseName)}</h2>`;
+  html += `<div class="pb-meta">${fmtDate(model.relStart)} – ${fmtDate(model.relEnd)} · ${model.counts.features} Features · ` +
+    `${model.counts.unscheduled} not yet scheduled</div>`;
+  html += '<div class="pb-toolbar"><button class="pb-button" id="pb-print" title="Opens the board in a new tab that you can print or save as PDF">Open printable view</button>' +
+    '<span id="pb-print-msg" class="pb-meta"></span></div>';
+  html += '<div class="pb-legend"><b>Legend:</b>' +
+    '<span class="pb-card">Feature</span>' +
+    '<span class="pb-card pb-dep">Feature others depend on (open)</span>' +
+    '<span class="pb-card pb-partial">Dashed: has unscheduled stories</span>' +
+    '<span class="pb-chip">⛓ F0000</span> open dependency on a Feature outside this board' +
+    '<span class="pb-card pb-ms">Milestone / Event</span>' +
+    '<svg width="60" height="14"><path d="M2 12 C30 12 30 2 56 2" stroke="#ec5945" stroke-width="3" fill="none"/></svg> dependency string (arrow → successor)</div>';
+
+  html += `<div id="pb-scroll"><div id="pb-grid" style="grid-template-columns:${template}">`;
+  html += '<div class="pb-h pb-corner">Teams</div>';
+  model.columns.forEach((c) => {
+    html += `<div class="pb-h">${escapeHtml(c.name)}${c.isIP ? ' (IP)' : ''}<small>${fmtDate(c.start)} – ${fmtDate(c.end)}</small></div>`;
+  });
+  html += '<div class="pb-h pb-uns">Not yet scheduled<small>no scheduled story</small></div>';
+
+  // Milestones & Events row
+  html += '<div class="pb-rl pb-msrow">Milestones &amp; Events</div>';
+  if (model.milestoneCount === 0) {
+    html += `<div class="pb-nomilestones" style="grid-column: span ${nCols + 1}">No Milestones or Events have a target date in this PI.</div>`;
+  } else {
+    model.columns.forEach((c) => {
+      const ms = model.milestonesByCol.get(c.index) || [];
+      html += '<div class="pb-cell pb-msrow">' + ms.map((m) =>
+        `<div class="pb-card pb-ms" title="${escapeHtml(m.Name)} — ${escapeHtml(String(m.TargetDate).slice(0, 10))}">` +
+        `<b>${applyFormattedIDTemplate(m)}</b><div class="pb-sub">${escapeHtml(m.Name)}</div></div>`).join('') + '</div>';
+    });
+    html += '<div class="pb-cell pb-uns pb-msrow"></div>';
+  }
+
+  model.rows.forEach((r) => {
+    if (r.count === 0 && !settings.showEmptyTeams) return;
+    const empty = r.count === 0 ? ' pb-empty' : '';
+    html += `<div class="pb-rl${empty}">${escapeHtml(r.label)}<small>${r.count} feature${r.count === 1 ? '' : 's'}</small></div>`;
+    for (let i = 1; i <= nCols; i++) {
+      html += `<div class="pb-cell${empty}">${(r.cardsByCol.get(i) || []).map(renderCard).join('')}</div>`;
+    }
+    html += `<div class="pb-cell pb-uns${empty}">${(r.cardsByCol.get(0) || []).map(renderCard).join('')}</div>`;
+  });
+  html += '</div><svg id="pb-strings"></svg></div>';
+
+  html += '<details class="pb-notes"><summary><b>How to read this board</b></summary><ul>' +
+    '<li>A Feature sits in the iteration of its <b>last scheduled user story</b>. Dashed cards still have unscheduled stories, so their real delivery iteration could be later.</li>' +
+    `<li>${model.counts.unscheduled} Features have no scheduled story (${model.counts.noStories} have no stories at all) and appear under “Not yet scheduled”. ${model.counts.partial} placed Features are partially scheduled.</li>` +
+    `<li>Only dependencies whose predecessor is <b>not done</b> are drawn (Feature State not in “${escapeHtml(settings.doneFeatureStates)}”, or story state not in “${escapeHtml(settings.doneStoryStates)}”). ` +
+    'Direct Feature-to-Feature links and implied links (a story depending on a story in another Feature) are both checked. The arrowhead is always on the successor.</li>' +
+    `<li>${model.counts.stringCount} dependency string(s) and ${model.counts.chipCount} chip(s) for predecessors outside this board.` +
+    (model.columns.length && settings.ipMode === 'last' ? ' The last iteration is treated as the IP iteration.' : '') + '</li>' +
+    (model.hiddenOutOfScope ? `<li>${model.hiddenOutOfScope} Feature(s) in this Release are owned by projects outside the page’s project scope and are not shown, because none of them is part of an open dependency.</li>` : '') + '</ul>';
+  if (model.chipCards.length) {
+    html += '<table><tr><th>Dependent Feature</th><th>Open predecessor</th><th>Why it is open</th></tr>' +
+      model.chipCards.flatMap((c) => c.chips.map((ch) =>
+        `<tr><td>${applyFormattedIDTemplate(c.record)}</td><td>${ch.record ? applyFormattedIDTemplate(ch.record) : escapeHtml(ch.id)}</td><td>${escapeHtml(ch.reasons.join('; '))}</td></tr>`)).join('') + '</table>';
+  }
+  html += '</details></div>';
+
+  wrapper.innerHTML = html;
+  document.getElementById('pb-print').addEventListener('click', () => openPrintableView());
+  drawStrings(model);
+  if (!window.__pbResizeBound) {
+    window.__pbResizeBound = true;
+    window.addEventListener('resize', () => window.__pbModel && drawStrings(window.__pbModel));
+  }
+  window.__pbModel = model;
+}
+
+// window.print() is ignored inside the widget's sandboxed iframe, so print from a new tab instead.
+function openPrintableView() {
+  const msg = document.getElementById('pb-print-msg');
+  const grid = document.getElementById('pb-grid');
+  const wrapper = document.getElementById('wrapper');
+  if (!grid || !wrapper) return;
+  const clone = wrapper.cloneNode(true);
+  const toolbar = clone.querySelector('.pb-toolbar');
+  if (toolbar) toolbar.remove();
+  const notes = clone.querySelector('details');
+  if (notes) notes.setAttribute('open', '');
+  const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent).join('\n');
+  const width = grid.scrollWidth;
+  const title = escapeHtml(document.title || 'Program Board');
+  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + title + '</title><style>' + css +
+    '\n@page { size: landscape; margin: 8mm; }' +
+    '\n#pb-scroll { max-height: none; overflow: visible; }' +
+    '\n#pb-grid { width: ' + width + 'px; }' +
+    '\n.pb-h, .pb-rl { position: static; }' +
+    '\nbody { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
+    '</style></head><body><div id="wrapper">' + clone.innerHTML + '</div>' +
+    '<script>(function(){var w=document.getElementById("pb-grid").offsetWidth||' + width + ';' +
+    'var fit=Math.min(1,1000/w);if(fit<1){document.body.style.zoom=fit;}' +
+    'window.addEventListener("load",function(){setTimeout(function(){try{window.print();}catch(e){}},400);});})();<\/script>' +
+    '</body></html>';
+  const win = window.open('', '_blank');
+  if (!win) {
+    if (msg) msg.textContent = 'Pop-ups are blocked. Allow pop-ups for this site and try again.';
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  if (msg) msg.textContent = 'Opened in a new tab. If the print dialog does not appear, press Ctrl/Cmd+P there.';
+}
+
+function drawStrings(model) {
+  const grid = document.getElementById('pb-grid');
+  const svg = document.getElementById('pb-strings');
+  if (!grid || !svg) return;
+  svg.setAttribute('width', grid.scrollWidth);
+  svg.setAttribute('height', grid.scrollHeight);
+  svg.innerHTML = '<defs><marker id="pb-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ec5945"/></marker></defs>';
+  const gb = grid.getBoundingClientRect();
+  model.strings.forEach((e) => {
+    const from = document.getElementById(`pb-c-${e.from}`);
+    const to = document.getElementById(`pb-c-${e.to}`);
+    if (!from || !to) return;
+    const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    const ax = a.left - gb.left, ay = a.top - gb.top, bx = b.left - gb.left, by = b.top - gb.top;
+    let d;
+    if (bx > ax + a.width) { // successor to the right
+      const x1 = ax + a.width, y1 = ay + a.height / 2, x2 = bx, y2 = by + b.height / 2, m = (x1 + x2) / 2;
+      d = `M${x1} ${y1} C${m} ${y1} ${m} ${y2} ${x2} ${y2}`;
+    } else if (bx + b.width < ax) { // successor to the left
+      const x1 = ax, y1 = ay + a.height / 2, x2 = bx + b.width, y2 = by + b.height / 2, m = (x1 + x2) / 2;
+      d = `M${x1} ${y1} C${m} ${y1} ${m} ${y2} ${x2} ${y2}`;
+    } else { // same column: connect top/bottom edges
+      const x1 = ax + a.width / 2, x2 = bx + b.width / 2;
+      const y1 = by > ay ? ay + a.height : ay, y2 = by > ay ? by : by + b.height, m = (y1 + y2) / 2;
+      d = `M${x1} ${y1} C${x1} ${m} ${x2} ${m} ${x2} ${y2}`;
+    }
+    svg.insertAdjacentHTML('beforeend',
+      `<path d="${d}" stroke="#ec5945" stroke-width="3" fill="none" marker-end="url(#pb-arrow)"><title>${escapeHtml(e.reasons.join('; '))}</title></path>`);
+  });
+}
+
+// ─── Settings UI (Edit Mode) ──────────────────────────────────────────────────
+function renderSettingsUI(settings) {
+  const wrapper = document.getElementById('wrapper');
+  wrapper.innerHTML = `
+    <div class="pb-settings">
+      <h3>Program Board settings</h3>
+      <p>This widget needs a custom view scoped by <b>Release</b>.</p>
+      <label for="pb-ip">IP iteration</label>
+      <select id="pb-ip">
+        <option value="last">Treat the last iteration as the IP iteration</option>
+        <option value="none">No IP iteration</option>
+      </select>
+      <label for="pb-empty">Team rows with no Features</label>
+      <select id="pb-empty">
+        <option value="true">Show (dimmed)</option>
+        <option value="false">Hide</option>
+      </select>
+      <label for="pb-df">Feature State values that count as done (comma-separated)</label>
+      <input type="text" id="pb-df">
+      <label for="pb-ds">Story ScheduleState values that count as done (comma-separated)</label>
+      <input type="text" id="pb-ds">
+    </div>`;
+  document.getElementById('pb-ip').value = settings.ipMode;
+  document.getElementById('pb-empty').value = String(settings.showEmptyTeams);
+  document.getElementById('pb-df').value = settings.doneFeatureStates;
+  document.getElementById('pb-ds').value = settings.doneStoryStates;
+  const save = () => {
+    currentSettings = cleanseSettings({
+      ...$RallyContext.Settings,
+      ipMode: document.getElementById('pb-ip').value,
+      showEmptyTeams: document.getElementById('pb-empty').value === 'true',
+      doneFeatureStates: document.getElementById('pb-df').value,
+      doneStoryStates: document.getElementById('pb-ds').value
+    });
+    window.RallyContext.updateSettings(currentSettings);
+  };
+  ['pb-ip', 'pb-empty', 'pb-df', 'pb-ds'].forEach((id) => document.getElementById(id).addEventListener('change', save));
+}
+  </script>
+</body>
+
+</html>
