@@ -1,5 +1,5 @@
 # rally-SAFe-program-board
-Scaled Agile Program Board in a Rally widget - this is NOT endorsed or supported by Broadcom
+Scaled Agile Program Board in a Rally widget - this is NOT endorsed or supported by Broadcom. Use at your own risk.
 
 # Program Board widget
 
