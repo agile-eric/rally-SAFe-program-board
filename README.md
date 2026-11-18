@@ -40,16 +40,3 @@ Scaled Agile Program Board in a Rally widget - this is NOT endorsed or supported
 - **Printing:** `window.print()` is silently ignored inside the widget's sandboxed iframe, so the button is **Open printable view**: it opens a static copy of the board in a new tab (landscape, scaled to fit) and then tries to open the print dialog there. If the dialog does not open, press Ctrl/Cmd+P in that tab. The copy is a snapshot; it does not refresh. Settings use plain `<select>`/`<input>` controls instead of `createStyledDropdown`, to avoid pulling in `ui-utilities.css`.
 - **Iteration columns come from dates, not names.** If a project has iterations that start on different days than the rest, they become their own column.
 
-## What was tested, and what was not
-
-Tested offline, in a JavaScript engine with stubbed DOM and synthetic data: column de-duplication, IP labelling, last-scheduled-story placement, partial-scheduling counts, done/open filtering for Feature-level and story-level dependencies, chips for off-board predecessors, same-Feature story links being ignored, team rows and milestone placement.
-
-**Not tested against live Rally** (no widget runtime available while building). Check these first if something looks wrong:
-
-1. **Collection hydration.** The widget fetches `Predecessors` with `collectionsize` and expects the items inline (`Results`). If they are not, it falls back to calling each collection's `_ref`. If dependencies look missing, inspect the network requests for the Feature and story queries.
-2. **`loadWsapiData` swallows API errors.** In the repo's utility, the error branch calls `Promise.reject(...)` without `return`, so a failed query resolves to `undefined`. The widget treats that as "no rows" instead of showing an error, so an empty board can mean a failed call. Check the browser console / network tab.
-3. **Query syntax:** `Feature.Release.Name = "…"` on stories, date comparisons on `StartDate` / `EndDate` / `TargetDate`, and `ObjectID = n` OR-chains (40 per request). All are valid WSAPI patterns but were not run from the widget.
-4. **Project list.** The widget loads all projects in the workspace with their `Parent` and works out the page project's subtree itself (descendants only when the page's *scope down* is on), because a `project` query does not reliably honor the scope flags. Confirm the team lanes match the project's real children, including nested teams.
-5. **Performance.** Everything loads in the browser: Features, all stories in the Release, then dependency lookups. A Release with thousands of stories may take several seconds; a status line shows progress.
-6. **Layout inside the widget iframe:** sticky headers, the SVG string overlay (redrawn on window resize only), and Print.
-7. **Detail links** open in a new tab as `<page URL>?detail=<ref>` (the pattern the endorsed *recent-activity* widget uses). Click one Feature, a chip and a milestone to confirm each opens its detail view.
